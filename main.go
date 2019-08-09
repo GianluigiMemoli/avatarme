@@ -9,13 +9,14 @@ import (
 )
 
 func main(){
-	id := generator.New(256, 256)
-	toBeHashed := "Diventerò un hash"
+	id := generator.New(256)
+	toBeHashed := "a"
 	h := sha1.New()
 	h.Write([]byte(toBeHashed))
-	hashed := h.Sum(nil)
-	id.Render(hashed)
-	id.MirrorHorizontally()
+	//hashed := h.Sum(nil)
+	//id.Render(hashed)
+	//id.MirrorHorizontally()
+	id.SetMargins()
 	f, err := os.Create("image.png")
 	if err != nil {
 		fmt.Printf("Error Occurred: %v", err)
