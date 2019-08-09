@@ -19,7 +19,8 @@ const (
 type identicon struct {
 	size           int
 	cell            int
-	backgroundColor color.Color
+	backgroundColor color.RGBA
+	foregroundColor color.RGBA
 	asImage			*image.RGBA
 	margin 			int
 }
@@ -40,9 +41,10 @@ func getImage(size int) *image.RGBA{
 	return image.NewRGBA(image.Rectangle{ptTop, ptBtm})
 }
 
-func New(size int) *identicon{
+func New(size int, fg color.RGBA) *identicon{
 	//Defining cell's side length = min(halfW/_COLS, halfH/_ROWS)
 	//Half because the image is written on the first half than is mirrored
+	log.Printf("Color fg: %v", fg)
 	cell := setCellSide(size)
 	//Make an image
 	img := getImage(size)
@@ -50,7 +52,13 @@ func New(size int) *identicon{
 	return &identicon{
 		size:         	 size,
 		cell:            cell,
-		backgroundColor: color.White,
+		backgroundColor: color.RGBA{
+			R: 255,
+			G: 255,
+			B: 255,
+			A: 0xff,
+		},
+		foregroundColor:	fg,
 		asImage: img,
 	}
 }
@@ -69,21 +77,24 @@ func (that *identicon) PrintCell(x, y int, aColor color.RGBA) (availableX int){
 }
 
 func (that *identicon) MirrorHorizontally(){
-	img := that.GetImg()
+	img := that.asImage
 	halfSize := that.size/2
-	for i :=0; i < halfSize; i++{
-		for j := 0; j < halfSize; j++ {
-			img.SetRGBA(that.size - i, j, img.RGBAAt(i, j))
+	for x := that.margin; x < halfSize; x++{
+		for y := that.margin; y < that.size; y++ {
+			img.SetRGBA(that.size - x, y, img.RGBAAt(x, y))
 		}
 	}
 }
 
 func (that *identicon) SetMargins(){
-	usedArea := (that.cell * that.cell) * ((_COLS * _ROWS))
+	usedArea := (that.cell * that.cell) * (_COLS * _ROWS)
 	unusedArea := (that.size * that.size) - usedArea
 	//Consider unusedArea as 4 rectangle, one per side
 	rectArea := unusedArea / 4
 	rectSide := rectArea / that.size
+	//Seems work, im adding 3 squared that are lost in the margin composition
+	rectArea += (rectSide * rectSide)*3
+	rectSide  = rectArea / that.size
 	//draw margins
 	img := that.asImage
 	log.Printf("UsedArea:%d\nUnusedArea:%d\nRectSide: %d", usedArea, unusedArea, rectSide)
@@ -94,7 +105,7 @@ func (that *identicon) SetMargins(){
 			img.SetRGBA(x, y, color.RGBA{255, 255,255, 0xff})
 			//bottom
 			img.SetRGBA(x, that.size-y, color.RGBA{255, 255,255, 0xff})
-			log.Printf("top margin x:%d y:%d", x, y)
+
 		}
 	}
 	//left and right margins
@@ -117,30 +128,21 @@ func (that *identicon) GetImg()  *image.RGBA{
 func (that *identicon) Render(hash []uint8) {
 	hashSliced := hash[3:]
 	var x, y int
-	x = 0
-	y = 0
+	x = that.margin
+	y = that.margin
 	currByte := 0
-	for i:=0; i < _ROWS; i++{
-		for j := 0; j < _COLS/2; j++{
+	for i := 0; i < _ROWS; i++ {
+		for j := 0; j < _COLS/2; j++ {
 			log.Printf("Considering byte: %d", hashSliced[currByte])
-			if hashSliced[currByte] % 2 == 0{
-				x = that.PrintCell(x,y, color.RGBA{
-					R: 255,
-					G: 0,
-					B: 0,
-					A: 0xff,
-				})
+			if hashSliced[currByte]%2 == 0 {
+				x = that.PrintCell(x, y, that.foregroundColor)
 			} else {
-				x = that.PrintCell(x,y, color.RGBA{
-					R: 0,
-					G: 0,
-					B: 255,
-					A: 0xff,
-				})
+				x = that.PrintCell(x, y, that.backgroundColor)
 			}
 			currByte++
+
 		}
-		x = 0
+		x = that.margin
 		y += that.cell
 	}
 }
