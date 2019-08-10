@@ -11,12 +11,11 @@ import (
 
 func main(){
 
-	toBeHashed := "Sesso anale"
+	toBeHashed := "Gianluigi Memoli"
 	h := sha1.New()
 	h.Write([]byte(toBeHashed))
 	hashed := h.Sum(nil)
 	id := generator.New(256, color.RGBA{hashed[0], hashed[1], hashed[2], 0xff})
-	id.SetPadding()
 	id.Render(hashed)
 	id.MirrorHorizontally()
 

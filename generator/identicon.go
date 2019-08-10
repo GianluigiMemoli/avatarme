@@ -17,7 +17,8 @@ type identicon struct {
 	backgroundColor color.RGBA
 	foregroundColor color.RGBA
 	asImage         *image.RGBA
-	padding         int
+	marginX         int
+	marginY         int
 }
 
 func setCellSide(size int) int {
@@ -47,6 +48,7 @@ func New(size int, fg color.RGBA) *identicon{
 	cell := setCellSide(size)
 	//Make an image
 	img := initImg(size)
+	marginX, marginY := SetPadding(size, cell)
 	log.Printf("cell: %d\n", cell)
 	return &identicon{
 		size:         	 size,
@@ -59,6 +61,8 @@ func New(size int, fg color.RGBA) *identicon{
 		},
 		foregroundColor:	fg,
 		asImage: img,
+		marginX: marginX,
+		marginY:marginY,
 	}
 }
 
@@ -78,24 +82,30 @@ func (icon *identicon) renderCell(x, y int, aColor color.RGBA) (availableX int){
 func (icon *identicon) MirrorHorizontally(){
 	img := icon.asImage
 	halfSize := icon.size/2
-	for x := icon.padding; x < halfSize; x++{
-		for y := icon.padding; y < icon.size; y++ {
+	for x := icon.marginX; x < halfSize; x++{
+		for y := icon.marginX; y < icon.size; y++ {
 			img.SetRGBA(icon.size - x, y, img.RGBAAt(x, y))
 		}
 	}
 }
 
-func (icon *identicon) SetPadding(){
-	usedArea := (icon.cell * icon.cell) * (_COLS * _ROWS)
+func SetPadding(size, cell int) (marginX, marginY int){
+	/*usedArea := (icon.cell * icon.cell) * (_COLS * _ROWS)
 	unusedArea := (icon.size * icon.size) - usedArea
 	//Consider unusedArea as 4 rectangle, one per side
 	rectArea := unusedArea / 4
 	rectHeight := rectArea / icon.size
-	//Seems work, im adding 3 squared icon are lost in the padding composition
-	rectArea += (rectHeight * rectHeight)
-	rectHeight = rectArea / icon.size
-	log.Printf("UsedArea:%d\nUnusedArea:%d\nRectSide: %d", usedArea, unusedArea, rectHeight)
-	icon.padding = rectHeight
+	//Adding 3 squares that are lost in the marginX composition
+	rectArea += (rectHeight * icon.size)
+	rectHeight = rectArea / icon.size*/
+	marginX = size/2 - (cell * _COLS)/2
+	//Top margin
+	usedHeight := cell * _ROWS
+	marginY = size/2 - usedHeight/2
+
+	log.Printf("MarginX: %d MarginY: %d", marginX, marginY)
+
+	return
 }
 
 func (icon *identicon) GetImg()  *image.RGBA{
@@ -105,8 +115,9 @@ func (icon *identicon) GetImg()  *image.RGBA{
 func (icon *identicon) Render(hash []uint8) {
 	hashSliced := hash[3:]
 	var x, y int
-	x = icon.padding
-	y = icon.padding
+	x = icon.marginX
+	y = icon.marginY
+	log.Printf("topmargin: %d", y)
 	currByte := 0
 	for i := 0; i < _ROWS; i++ {
 		for j := 0; j < _COLS/2; j++ {
@@ -119,7 +130,15 @@ func (icon *identicon) Render(hash []uint8) {
 			currByte++
 
 		}
-		x = icon.padding
+		x = icon.marginX
 		y += icon.cell
+	}
+}
+
+func (icon *identicon) RenderBackground(){
+	for x := 0; x < icon.size/2; x++ {
+		for y := 0; y < icon.size; y++ {
+
+		}
 	}
 }
