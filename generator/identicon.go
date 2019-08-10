@@ -1,14 +1,9 @@
 package generator
 
 import (
-	//	"fmt"
-	//	"image"
 	"image"
 	"image/color"
 	"log"
-
-	//	"image/png"
-	//	"os"
 )
 
 const (
@@ -17,15 +12,19 @@ const (
 )
 
 type identicon struct {
-	size           int
+	size            int
 	cell            int
 	backgroundColor color.RGBA
 	foregroundColor color.RGBA
-	asImage			*image.RGBA
-	margin 			int
+	asImage         *image.RGBA
+	padding         int
 }
 
 func setCellSide(size int) int {
+	/*
+		The cell size is chosen on the half size of image because it will be
+		horizontally mirrored
+	*/
 	halfSize := size/2
 	div1 := halfSize / (_COLS/2)
 	div2 := halfSize / (_ROWS)
@@ -35,7 +34,7 @@ func setCellSide(size int) int {
 	return div2
 }
 
-func getImage(size int) *image.RGBA{
+func initImg(size int) *image.RGBA{
 	ptTop := image.Point{0, 0}
 	ptBtm := image.Point{size, size}
 	return image.NewRGBA(image.Rectangle{ptTop, ptBtm})
@@ -47,7 +46,7 @@ func New(size int, fg color.RGBA) *identicon{
 	log.Printf("Color fg: %v", fg)
 	cell := setCellSide(size)
 	//Make an image
-	img := getImage(size)
+	img := initImg(size)
 	log.Printf("cell: %d\n", cell)
 	return &identicon{
 		size:         	 size,
@@ -63,86 +62,64 @@ func New(size int, fg color.RGBA) *identicon{
 	}
 }
 
-func (that *identicon) PrintCell(x, y int, aColor color.RGBA) (availableX int){
+func (icon *identicon) renderCell(x, y int, aColor color.RGBA) (availableX int){
 	//Render a cell given x,y and returns last x available
-	img := that.asImage
+	img := icon.asImage
 	var i,j int
 	log.Printf("Printing a cell x:%d y:%d", x, y)
-	for i = x; i - x <= that.cell; i++ {
-		for j = y; j - y <= that.cell; j++ {
+	for i = x; i - x <= icon.cell; i++ {
+		for j = y; j - y <= icon.cell; j++ {
 			img.SetRGBA(i, j, aColor)
 		}
 	}
 	return i
 }
 
-func (that *identicon) MirrorHorizontally(){
-	img := that.asImage
-	halfSize := that.size/2
-	for x := that.margin; x < halfSize; x++{
-		for y := that.margin; y < that.size; y++ {
-			img.SetRGBA(that.size - x, y, img.RGBAAt(x, y))
+func (icon *identicon) MirrorHorizontally(){
+	img := icon.asImage
+	halfSize := icon.size/2
+	for x := icon.padding; x < halfSize; x++{
+		for y := icon.padding; y < icon.size; y++ {
+			img.SetRGBA(icon.size - x, y, img.RGBAAt(x, y))
 		}
 	}
 }
 
-func (that *identicon) SetMargins(){
-	usedArea := (that.cell * that.cell) * (_COLS * _ROWS)
-	unusedArea := (that.size * that.size) - usedArea
+func (icon *identicon) SetPadding(){
+	usedArea := (icon.cell * icon.cell) * (_COLS * _ROWS)
+	unusedArea := (icon.size * icon.size) - usedArea
 	//Consider unusedArea as 4 rectangle, one per side
 	rectArea := unusedArea / 4
-	rectSide := rectArea / that.size
-	//Seems work, im adding 3 squared that are lost in the margin composition
-	rectArea += (rectSide * rectSide)*3
-	rectSide  = rectArea / that.size
-	//draw margins
-	img := that.asImage
-	log.Printf("UsedArea:%d\nUnusedArea:%d\nRectSide: %d", usedArea, unusedArea, rectSide)
-	//top and bottom margins
-	for x := 0; x < that.size; x++ {
-		for y := 0; y < rectSide; y++ {
-			//top
-			img.SetRGBA(x, y, color.RGBA{255, 255,255, 0xff})
-			//bottom
-			img.SetRGBA(x, that.size-y, color.RGBA{255, 255,255, 0xff})
-
-		}
-	}
-	//left and right margins
-	for y := rectSide; y < that.size; y++ {
-		for x := 0; x < rectSide; x++{
-			//left
-			img.SetRGBA(x, y, color.RGBA{255, 255,255, 0xff})
-			//right
-			img.SetRGBA(that.size - x, y, color.RGBA{255, 255,255, 0xff})
-		}
-
-	}
-	that.margin  = rectSide
+	rectHeight := rectArea / icon.size
+	//Seems work, im adding 3 squared icon are lost in the padding composition
+	rectArea += (rectHeight * rectHeight)
+	rectHeight = rectArea / icon.size
+	log.Printf("UsedArea:%d\nUnusedArea:%d\nRectSide: %d", usedArea, unusedArea, rectHeight)
+	icon.padding = rectHeight
 }
 
-func (that *identicon) GetImg()  *image.RGBA{
-	return that.asImage
+func (icon *identicon) GetImg()  *image.RGBA{
+	return icon.asImage
 }
 
-func (that *identicon) Render(hash []uint8) {
+func (icon *identicon) Render(hash []uint8) {
 	hashSliced := hash[3:]
 	var x, y int
-	x = that.margin
-	y = that.margin
+	x = icon.padding
+	y = icon.padding
 	currByte := 0
 	for i := 0; i < _ROWS; i++ {
 		for j := 0; j < _COLS/2; j++ {
 			log.Printf("Considering byte: %d", hashSliced[currByte])
 			if hashSliced[currByte]%2 == 0 {
-				x = that.PrintCell(x, y, that.foregroundColor)
+				x = icon.renderCell(x, y, icon.foregroundColor)
 			} else {
-				x = that.PrintCell(x, y, that.backgroundColor)
+				x = icon.renderCell(x, y, icon.backgroundColor)
 			}
 			currByte++
 
 		}
-		x = that.margin
-		y += that.cell
+		x = icon.padding
+		y += icon.cell
 	}
 }
