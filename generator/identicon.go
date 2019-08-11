@@ -127,8 +127,8 @@ func (icon *identicon) renderBackground() {
 		}
 	}
 	//drawing left/right background
-	for y := icon.marginY; y < icon.size-icon.marginY; y++ {
-		for x:= 0; x < icon.marginX; x++ {
+	for y := icon.marginY; y <= icon.size-icon.marginY; y++ {
+		for x:= 0; x <= icon.marginX; x++ {
 			img.SetRGBA(x, y, icon.backgroundColor)
 			img.SetRGBA(icon.size - x, y, icon.backgroundColor)
 		}
