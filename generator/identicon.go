@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"image/png"
 	"os"
+	"sync"
 )
 
 const (
@@ -97,7 +98,7 @@ func (icon *identicon) mirrorHorizontally(){
 }
 
 
-func (icon *identicon) render(hash []uint8) {
+func (icon *identicon) render(hash []uint8, waiter *sync.WaitGroup) {
 	hashSliced := hash[3:]
 	var x, y int
 	x = icon.marginX
@@ -115,9 +116,12 @@ func (icon *identicon) render(hash []uint8) {
 		x = icon.marginX
 		y += icon.cell
 	}
+	if waiter != nil{
+		waiter.Done()
+	}
 }
 
-func (icon *identicon) renderBackground() {
+func (icon *identicon) renderBackground(waiter *sync.WaitGroup) {
 	img := icon.image
 	//drawing top & bottom background
 	for x := 0; x < icon.size; x++ {
@@ -133,6 +137,11 @@ func (icon *identicon) renderBackground() {
 			img.SetRGBA(icon.size - x, y, icon.backgroundColor)
 		}
 	}
+
+	if waiter != nil{
+		waiter.Done()
+	}
+
 }
 
 
@@ -140,9 +149,11 @@ func (icon *identicon) renderBackground() {
 func (icon *identicon) Create(hash []uint8, fileName string) interface{} {
 	//Using first 3 hash bytes for color
 	icon.foregroundColor = color.RGBA{hash[0], hash[1], hash[2], 255}
-	icon.render(hash)
-	//icon.renderBackground()
-	icon.renderBackground()
+	var waiter  sync.WaitGroup
+	waiter.Add(2)
+	go icon.render(hash, &waiter)
+	go icon.renderBackground(&waiter)
+	waiter.Wait()
 	icon.mirrorHorizontally()
 	f, err := os.Create(fileName+".png")
 	if err != nil {
@@ -152,3 +163,21 @@ func (icon *identicon) Create(hash []uint8, fileName string) interface{} {
 	}
 	return err
 }
+
+func (icon *identicon) NoCreate(hash []uint8, fileName string) interface{} {
+	//Using first 3 hash bytes for color
+	icon.foregroundColor = color.RGBA{hash[0], hash[1], hash[2], 255}
+
+	icon.render(hash, nil)
+	icon.renderBackground(nil)
+
+	icon.mirrorHorizontally()
+	f, err := os.Create(fileName+".png")
+	if err != nil {
+		return err
+	} else {
+		err = png.Encode(f, icon.image)
+	}
+	return err
+}
+

@@ -43,10 +43,10 @@ func main(){
 
 	icon := generator.New(side)
 	errCreating := icon.Create(makeHash(wordToHash), fileName)
+
 	if errCreating != nil {
 		fmt.Printf("Error occurred: %v", err)
 	}
 	fmt.Printf("SUCCESS! \n Graphical Hash of %s is in file %s in dim of %d", wordToHash, fileName, side)
 }
-
 
